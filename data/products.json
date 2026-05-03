@@ -1,0 +1,146 @@
+[
+  {
+    "id": "prod1",
+    "name": "Oud Royal Noir",
+    "category": "cat1",
+    "price": 4999,
+    "originalPrice": 6499,
+    "stock": 50,
+    "image": "/images/perfume1.jpg",
+    "images": [
+      "/images/perfume1.jpg",
+      "/images/perfume2.jpg",
+      "/images/perfume3.jpg"
+    ],
+    "description": "A majestic blend of deep Oud, saffron, and musk. The king of oriental fragrances, crafted for those who command attention.",
+    "notes": {
+      "top": "Saffron, Cardamom",
+      "heart": "Oud, Rose",
+      "base": "Musk, Amber"
+    },
+    "size": "100ml",
+    "featured": true,
+    "rating": 4.8,
+    "reviews": 124
+  },
+  {
+    "id": "prod2",
+    "name": "Rose Élégance",
+    "category": "cat2",
+    "price": 3299,
+    "originalPrice": 3299,
+    "stock": 75,
+    "image": "/images/perfume2.jpg",
+    "images": [
+      "/images/perfume2.jpg",
+      "/images/perfume4.jpg",
+      "/images/perfume5.jpg"
+    ],
+    "description": "An exquisite bouquet of Bulgarian roses with hints of peony and white musk. Timeless feminine elegance.",
+    "notes": {
+      "top": "Bergamot, Peach",
+      "heart": "Bulgarian Rose, Peony",
+      "base": "White Musk, Sandalwood"
+    },
+    "size": "75ml",
+    "featured": true,
+    "rating": 4.6,
+    "reviews": 89
+  },
+  {
+    "id": "prod3",
+    "name": "Citrus Soleil",
+    "category": "cat3",
+    "price": 2499,
+    "originalPrice": 2999,
+    "stock": 99,
+    "image": "/images/perfume3.jpg",
+    "images": [
+      "/images/perfume3.jpg",
+      "/images/perfume1.jpg",
+      "/images/perfume6.jpg"
+    ],
+    "description": "A vibrant explosion of Mediterranean citrus fruits. Fresh, energetic, and perfect for every day.",
+    "notes": {
+      "top": "Lemon, Bergamot, Grapefruit",
+      "heart": "Neroli, Jasmine",
+      "base": "Cedar, Vetiver"
+    },
+    "size": "100ml",
+    "featured": false,
+    "rating": 4.4,
+    "reviews": 67
+  },
+  {
+    "id": "prod4",
+    "name": "Midnight Amber",
+    "category": "cat4",
+    "price": 7999,
+    "originalPrice": 7999,
+    "stock": 25,
+    "image": "/images/perfume4.jpg",
+    "images": [
+      "/images/perfume4.jpg",
+      "/images/perfume6.jpg",
+      "/images/perfume1.jpg"
+    ],
+    "description": "The ultimate luxury experience. Warm amber, precious woods, and a whisper of vanilla create an unforgettable signature.",
+    "notes": {
+      "top": "Aldehydes, Bergamot",
+      "heart": "Amber, Patchouli, Rose",
+      "base": "Vanilla, Benzoin, Musk"
+    },
+    "size": "50ml",
+    "featured": true,
+    "rating": 4.9,
+    "reviews": 45
+  },
+  {
+    "id": "prod5",
+    "name": "Aqua Marine",
+    "category": "cat3",
+    "price": 1999,
+    "originalPrice": 2499,
+    "stock": 80,
+    "image": "/images/perfume5.jpg",
+    "images": [
+      "/images/perfume5.jpg",
+      "/images/perfume3.jpg",
+      "/images/perfume2.jpg"
+    ],
+    "description": "Ocean-inspired freshness with aquatic notes and a clean, crisp finish. Pure freedom in a bottle.",
+    "notes": {
+      "top": "Sea Salt, Ozonic",
+      "heart": "Violet, Lotus",
+      "base": "Driftwood, White Musk"
+    },
+    "size": "100ml",
+    "featured": false,
+    "rating": 4.3,
+    "reviews": 103
+  },
+  {
+    "id": "prod6",
+    "name": "Persian Bouquet",
+    "category": "cat1",
+    "price": 5499,
+    "originalPrice": 6999,
+    "stock": 35,
+    "image": "/images/perfume6.jpg",
+    "images": [
+      "/images/perfume6.jpg",
+      "/images/perfume1.jpg",
+      "/images/perfume4.jpg"
+    ],
+    "description": "Ancient Persian art distilled into fragrance. Oud, rose, and exotic spices weave a tapestry of legends.",
+    "notes": {
+      "top": "Rose, Saffron",
+      "heart": "Oud, Incense",
+      "base": "Patchouli, Musk"
+    },
+    "size": "75ml",
+    "featured": true,
+    "rating": 4.7,
+    "reviews": 58
+  }
+]

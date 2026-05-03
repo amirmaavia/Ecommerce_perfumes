@@ -1,0 +1,31 @@
+[
+  {
+    "id": "f2ac7151-6f79-4a47-898d-803066255c6e",
+    "name": "Admin",
+    "email": "admin@luxe.com",
+    "password": "$2b$12$eYON4R0mjUrAHPxJEr1f0Olya2YnYM9tTHgmid4ZAPyrDl.6jnXG.",
+    "role": "admin",
+    "addresses": [],
+    "createdAt": "2026-03-09T16:26:43.415Z"
+  },
+  {
+    "id": "7abf57cc-25bb-4534-b989-69fb6de1a1ac",
+    "name": "Ameer Muavia",
+    "email": "Maaviyamansoori222@gmail.com",
+    "password": "$2b$12$AxkeWO.K.fpgdKcoM.BlDOotU51uzENKm6SpqZY86FodnwAhaIeIW",
+    "role": "user",
+    "addresses": [
+      {
+        "fullName": "Ameer Muavia",
+        "phone": "03343291152",
+        "street": "Flat no 1",
+        "city": "karachi",
+        "province": "Sindh",
+        "postalCode": "5677",
+        "country": "Pakistan",
+        "id": "858d856a-934d-4e5b-9689-2fb935f6e901"
+      }
+    ],
+    "createdAt": "2026-04-04T11:57:07.745Z"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "cat1",
+    "name": "Oud",
+    "description": "Rich, woody oriental fragrances"
+  },
+  {
+    "id": "cat2",
+    "name": "Floral",
+    "description": "Light, fresh floral perfumes"
+  },
+  {
+    "id": "cat3",
+    "name": "Citrus",
+    "description": "Fresh citrus-based scents"
+  },
+  {
+    "id": "cat4",
+    "name": "Luxury",
+    "description": "Premium luxury collection"
+  }
+]

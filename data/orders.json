@@ -1,0 +1,35 @@
+[
+  {
+    "id": "6d121dde-9fa3-4ada-8c8a-15be85c07413",
+    "userId": "7abf57cc-25bb-4534-b989-69fb6de1a1ac",
+    "userName": "Ameer Muavia",
+    "userEmail": "Maaviyamansoori222@gmail.com",
+    "items": [
+      {
+        "productId": "prod3",
+        "productName": "Citrus Soleil",
+        "price": 2499,
+        "quantity": 1,
+        "image": "/images/perfume3.jpg"
+      }
+    ],
+    "shippingAddress": {
+      "fullName": "Ameer Muavia",
+      "phone": "03343291152",
+      "street": "Flat no 1",
+      "city": "karachi",
+      "province": "Sindh",
+      "postalCode": "5677",
+      "country": "Pakistan"
+    },
+    "subtotal": 2499,
+    "discountAmount": 0,
+    "appliedDiscount": null,
+    "shipping": 199,
+    "total": 2698,
+    "paymentMethod": "cod",
+    "status": "delivered",
+    "createdAt": "2026-04-04T11:58:14.311Z",
+    "updatedAt": "2026-04-04T11:59:59.268Z"
+  }
+]
