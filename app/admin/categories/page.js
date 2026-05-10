@@ -2,6 +2,7 @@
 // app/admin/categories/page.js
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { secureFetch } from '@/lib/clientCrypto';
 
 export default function AdminCategories() {
   const toast = useToast();
@@ -12,21 +13,19 @@ export default function AdminCategories() {
   useEffect(() => { loadCats(); }, []);
 
   async function loadCats() {
-    const res = await fetch('/api/categories');
-    const d = await res.json();
-    setCategories(d.categories || []);
+    const { data } = await secureFetch('/api/categories');
+    setCategories(data.categories || []);
   }
 
   async function handleAdd(e) {
     e.preventDefault();
     setLoading(true);
-    const res = await fetch('/api/categories', {
+    const { ok, data } = await secureFetch('/api/categories', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
-    const data = await res.json();
-    if (res.ok) {
+    if (ok) {
       toast(`Category "${form.name}" added!`);
       setForm({ name: '', description: '' });
       loadCats();
@@ -36,12 +35,12 @@ export default function AdminCategories() {
 
   async function handleDelete(id, name) {
     if (!confirm(`Delete category "${name}"? This does NOT delete products in it.`)) return;
-    const res = await fetch('/api/categories', {
+    const { ok } = await secureFetch('/api/categories', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     });
-    if (res.ok) { toast('Category deleted'); loadCats(); }
+    if (ok) { toast('Category deleted'); loadCats(); }
     else toast('Failed to delete', 'error');
   }
 

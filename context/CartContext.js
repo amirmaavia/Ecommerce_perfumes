@@ -16,38 +16,54 @@ export function CartProvider({ children }) {
     localStorage.setItem('luxe_cart', JSON.stringify(cart));
   }, [cart]);
 
-  function addToCart(product, quantity = 1) {
+  // Cart key = productId + size combo for variant support
+  function getCartKey(productId, size) {
+    return `${productId}__${size || 'default'}`;
+  }
+
+  function addToCart(product, quantity = 1, selectedSize = null) {
+    const size = selectedSize || product.size || 'default';
+    const cartKey = getCartKey(product.id, size);
+
+    // Find variant data if available
+    const variant = product.variants?.find(v => v.size === size);
+    const price = variant ? variant.price : product.price;
+    const stock = variant ? variant.stock : product.stock;
+    const image = variant?.images?.[0] || product.image;
+
     setCart(prev => {
-      const existing = prev.find(i => i.productId === product.id);
+      const existing = prev.find(i => i.cartKey === cartKey);
       if (existing) {
         return prev.map(i =>
-          i.productId === product.id
-            ? { ...i, quantity: Math.min(i.quantity + quantity, product.stock) }
+          i.cartKey === cartKey
+            ? { ...i, quantity: Math.min(i.quantity + quantity, stock) }
             : i
         );
       }
       return [...prev, {
+        cartKey,
         productId: product.id,
         name: product.name,
-        price: product.price,
-        image: product.image,
-        stock: product.stock,
+        price,
+        image,
+        stock,
+        size,
         quantity,
       }];
     });
   }
 
-  function removeFromCart(productId) {
-    setCart(prev => prev.filter(i => i.productId !== productId));
+  function removeFromCart(cartKey) {
+    setCart(prev => prev.filter(i => i.cartKey !== cartKey));
   }
 
-  function updateQuantity(productId, quantity) {
+  function updateQuantity(cartKey, quantity) {
     if (quantity <= 0) {
-      removeFromCart(productId);
+      removeFromCart(cartKey);
       return;
     }
     setCart(prev => prev.map(i =>
-      i.productId === productId ? { ...i, quantity: Math.min(quantity, i.stock) } : i
+      i.cartKey === cartKey ? { ...i, quantity: Math.min(quantity, i.stock) } : i
     ));
   }
 

@@ -1,13 +1,13 @@
 // app/api/admin/stats/route.js
 import { NextResponse } from 'next/server';
 import { getOrders, getProducts, getUsers } from '@/lib/db';
-import { verifyApiToken } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
+import { encryptResponse } from '@/lib/crypto';
 
 export async function GET(request) {
-  const user = verifyApiToken(request);
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  }
+  // Require valid JWT admin token
+  const auth = requireAdmin(request);
+  if (auth.response) return auth.response;
 
   try {
     const orders = await getOrders();
@@ -46,7 +46,7 @@ export async function GET(request) {
     });
     const topProducts = Object.values(productSales).sort((a, b) => b.quantity - a.quantity).slice(0, 5);
 
-    return NextResponse.json({
+    return NextResponse.json(encryptResponse({
       totalRevenue,
       totalOrders,
       pendingOrders,
@@ -56,9 +56,9 @@ export async function GET(request) {
       last7Days,
       topProducts,
       recentOrders: orders.slice(0, 5),
-    });
+    }));
   } catch (error) {
     console.error('Admin stats error:', error);
-    return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
+    return NextResponse.json(encryptResponse({ error: 'Failed to fetch stats' }), { status: 500 });
   }
 }

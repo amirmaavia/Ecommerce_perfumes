@@ -1,7 +1,8 @@
 // app/api/products/route.js
 import { NextResponse } from 'next/server';
 import { getProducts, createProduct } from '@/lib/db';
-import { verifyApiToken } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
+import { encryptResponse, decryptRequest } from '@/lib/crypto';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request) {
@@ -21,25 +22,25 @@ export async function GET(request) {
 
   try {
     const products = await getProducts(filters);
-    return NextResponse.json({ products });
+    return NextResponse.json(encryptResponse({ products }));
   } catch (error) {
     console.error('Products GET error:', error);
-    return NextResponse.json({ products: [], error: 'Failed to fetch products' }, { status: 500 });
+    return NextResponse.json(encryptResponse({ products: [], error: 'Failed to fetch products' }), { status: 500 });
   }
 }
 
 export async function POST(request) {
-  const user = verifyApiToken(request);
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  }
+  // Require valid JWT admin token
+  const auth = requireAdmin(request);
+  if (auth.response) return auth.response;
 
   try {
-    const body = await request.json();
+    const rawBody = await request.json();
+    const body = decryptRequest(rawBody);
     const { name, category, price, originalPrice, stock, description, notes, size, gender, featured, image, images } = body;
 
     if (!name || !price || !stock) {
-      return NextResponse.json({ error: 'Name, price and stock are required' }, { status: 400 });
+      return NextResponse.json(encryptResponse({ error: 'Name, price and stock are required' }), { status: 400 });
     }
 
     const newProduct = {
@@ -61,9 +62,9 @@ export async function POST(request) {
     };
 
     await createProduct(newProduct);
-    return NextResponse.json({ product: newProduct }, { status: 201 });
+    return NextResponse.json(encryptResponse({ product: newProduct }), { status: 201 });
   } catch (error) {
     console.error('Products POST error:', error);
-    return NextResponse.json({ error: 'Failed to create product' }, { status: 500 });
+    return NextResponse.json(encryptResponse({ error: 'Failed to create product' }), { status: 500 });
   }
 }

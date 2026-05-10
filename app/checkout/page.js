@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ToastProvider';
 import Link from 'next/link';
+import { secureFetch } from '@/lib/clientCrypto';
 
 const EMPTY_ADDR = { fullName: '', phone: '', street: '', city: '', province: '', postalCode: '', country: 'Pakistan' };
 
@@ -42,13 +43,12 @@ export default function CheckoutPage() {
     setDiscountError('');
     if (!discountCode.trim()) return;
     try {
-      const res = await fetch('/api/discounts/validate', {
+      const { ok, data } = await secureFetch('/api/discounts/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: discountCode, orderTotal: subtotal }),
       });
-      const data = await res.json();
-      if (!res.ok) { setDiscountError(data.error); setDiscountData(null); }
+      if (!ok) { setDiscountError(data.error); setDiscountData(null); }
       else { setDiscountData(data); toast('Discount applied! 🎉'); }
     } catch { setDiscountError('Failed to validate code'); }
   };
@@ -60,18 +60,17 @@ export default function CheckoutPage() {
     }
     setLoading(true);
     try {
-      const res = await fetch('/api/orders', {
+      const { ok, data } = await secureFetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: cart.map(i => ({ productId: i.productId, quantity: i.quantity })),
+          items: cart.map(i => ({ productId: i.productId, quantity: i.quantity, size: i.size || null })),
           shippingAddress: address,
           discountCode: discountData ? discountCode : null,
           paymentMethod,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) { toast(data.error, 'error'); setLoading(false); return; }
+      if (!ok) { toast(data.error, 'error'); setLoading(false); return; }
       clearCart();
       toast('Order placed successfully! 🎉');
       router.push(`/orders?new=${data.order.id}`);
@@ -199,13 +198,20 @@ export default function CheckoutPage() {
             {/* Items */}
             <div style={{marginBottom:'20px'}}>
               {cart.map(item => (
-                <div key={item.productId} style={{display:'flex',gap:'12px',alignItems:'center',marginBottom:'12px'}}>
-                  <div style={{width:'48px',height:'56px',background:'var(--dark3)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',flexShrink:0}}>
-                    🧴
+                <div key={item.cartKey || item.productId} style={{display:'flex',gap:'12px',alignItems:'center',marginBottom:'12px'}}>
+                  <div style={{width:'48px',height:'56px',background:'var(--dark3)',borderRadius:'8px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px',flexShrink:0,overflow:'hidden'}}>
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e => { e.target.style.display='none'; }} />
+                    ) : '🧴'}
                   </div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:'13px',fontWeight:500}}>{item.name}</div>
-                    <div style={{fontSize:'12px',color:'var(--text-muted)'}}>Qty: {item.quantity}</div>
+                    <div style={{fontSize:'12px',color:'var(--text-muted)',display:'flex',gap:'6px',alignItems:'center'}}>
+                      Qty: {item.quantity}
+                      {item.size && item.size !== 'default' && (
+                        <span style={{fontSize:'10px',padding:'1px 6px',borderRadius:'100px',background:'rgba(201,169,110,0.15)',color:'var(--gold)',fontWeight:600}}>{item.size}</span>
+                      )}
+                    </div>
                   </div>
                   <div style={{fontWeight:700,fontSize:'14px',color:'var(--gold)'}}>
                     Rs. {(item.price * item.quantity).toLocaleString()}

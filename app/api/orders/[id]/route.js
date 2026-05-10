@@ -1,38 +1,48 @@
 // app/api/orders/[id]/route.js
 import { NextResponse } from 'next/server';
-import { getOrders, saveOrders, getOrderById } from '@/lib/db';
-import { verifyApiToken } from '@/lib/auth';
+import { getOrderById, updateOrderStatus } from '@/lib/db';
+import { requireAuth, requireAdmin } from '@/lib/auth';
+import { encryptResponse, decryptRequest } from '@/lib/crypto';
 
 export async function GET(request, { params }) {
-  const user = verifyApiToken(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Require valid JWT token
+  const auth = requireAuth(request);
+  if (auth.response) return auth.response;
 
   const { id } = await params;
-  const order = getOrderById(id);
-  if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  try {
+    const order = await getOrderById(id);
+    if (!order) return NextResponse.json(encryptResponse({ error: 'Order not found' }), { status: 404 });
 
-  if (user.role !== 'admin' && order.userId !== user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    if (auth.user.role !== 'admin' && order.userId !== auth.user.id) {
+      return NextResponse.json(encryptResponse({ error: 'Forbidden' }), { status: 403 });
+    }
+
+    return NextResponse.json(encryptResponse({ order }));
+  } catch (error) {
+    console.error('Order GET error:', error);
+    return NextResponse.json(encryptResponse({ error: 'Failed to fetch order' }), { status: 500 });
   }
-
-  return NextResponse.json({ order });
 }
 
 export async function PUT(request, { params }) {
-  const user = verifyApiToken(request);
-  if (!user || user.role !== 'admin') {
-    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-  }
+  // Require valid JWT admin token
+  const auth = requireAdmin(request);
+  if (auth.response) return auth.response;
 
   const { id } = await params;
-  const { status } = await request.json();
-  const orders = getOrders();
-  const idx = orders.findIndex(o => o.id === id);
-  if (idx === -1) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+  try {
+    const rawBody = await request.json();
+    const { status } = decryptRequest(rawBody);
 
-  orders[idx].status = status;
-  orders[idx].updatedAt = new Date().toISOString();
-  saveOrders(orders);
+    const order = await getOrderById(id);
+    if (!order) return NextResponse.json(encryptResponse({ error: 'Order not found' }), { status: 404 });
 
-  return NextResponse.json({ order: orders[idx] });
+    await updateOrderStatus(id, status);
+    const updatedOrder = await getOrderById(id);
+    return NextResponse.json(encryptResponse({ order: updatedOrder }));
+  } catch (error) {
+    console.error('Order PUT error:', error);
+    return NextResponse.json(encryptResponse({ error: 'Failed to update order' }), { status: 500 });
+  }
 }

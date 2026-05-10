@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { secureFetch } from '@/lib/clientCrypto';
 
 function OrdersContent() {
   const { user, loading: authLoading } = useAuth();
@@ -18,9 +19,8 @@ function OrdersContent() {
   useEffect(() => {
     if (!authLoading && !user) { router.push('/login'); return; }
     if (user) {
-      fetch('/api/orders')
-        .then(r => r.json())
-        .then(d => { setOrders(d.orders || []); setLoading(false); });
+      secureFetch('/api/orders')
+        .then(res => { setOrders(res.data.orders || []); setLoading(false); });
     }
   }, [user, authLoading]);
 

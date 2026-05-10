@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import ProductCard from '@/components/ProductCard';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { secureFetch } from '@/lib/clientCrypto';
 
 function ShopContent() {
   const searchParams = useSearchParams();
@@ -36,7 +37,7 @@ function ShopContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    fetch('/api/categories').then(r => r.json()).then(d => setCategories(d.categories || []));
+    secureFetch('/api/categories').then(res => setCategories(res.data.categories || []));
   }, []);
 
   const fetchProducts = useCallback(() => {
@@ -51,8 +52,8 @@ function ShopContent() {
     if (priceRange[0] > 0) url += `minPrice=${priceRange[0]}&`;
     if (priceRange[1] < 10000) url += `maxPrice=${priceRange[1]}&`;
 
-    fetch(url).then(r => r.json()).then(d => {
-      let prods = d.products || [];
+    secureFetch(url).then(res => {
+      let prods = res.data.products || [];
 
       // Client-side: on sale filter
       if (onSale) {

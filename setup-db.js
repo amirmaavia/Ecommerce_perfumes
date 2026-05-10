@@ -68,6 +68,7 @@ async function setup() {
       featured TINYINT(1) DEFAULT 0,
       rating DECIMAL(2,1) DEFAULT 0,
       reviews INT DEFAULT 0,
+      variants JSON,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL,
@@ -152,6 +153,10 @@ async function setup() {
       description: 'A majestic blend of deep Oud, saffron, and musk. The king of oriental fragrances, crafted for those who command attention.',
       notes: { top: 'Saffron, Cardamom', heart: 'Oud, Rose', base: 'Musk, Amber' },
       size: '100ml', gender: 'male', featured: true, rating: 4.8, reviews: 124,
+      variants: [
+        { size: '50ml', price: 2999, originalPrice: 3999, stock: 40, images: ['/images/perfume1.jpg', '/images/perfume2.jpg'] },
+        { size: '100ml', price: 4999, originalPrice: 6499, stock: 50, images: ['/images/perfume1.jpg', '/images/perfume2.jpg', '/images/perfume3.jpg'] },
+      ],
     },
     {
       id: 'prod2', name: 'Rose Élégance', category_id: 'cat2',
@@ -161,6 +166,11 @@ async function setup() {
       description: 'An exquisite bouquet of Bulgarian roses with hints of peony and white musk. Timeless feminine elegance.',
       notes: { top: 'Bergamot, Peach', heart: 'Bulgarian Rose, Peony', base: 'White Musk, Sandalwood' },
       size: '75ml', gender: 'female', featured: true, rating: 4.6, reviews: 89,
+      variants: [
+        { size: '50ml', price: 2499, originalPrice: 2499, stock: 60, images: ['/images/perfume2.jpg', '/images/perfume4.jpg'] },
+        { size: '75ml', price: 3299, originalPrice: 3299, stock: 75, images: ['/images/perfume2.jpg', '/images/perfume4.jpg', '/images/perfume5.jpg'] },
+        { size: '100ml', price: 4199, originalPrice: 4199, stock: 30, images: ['/images/perfume2.jpg', '/images/perfume5.jpg'] },
+      ],
     },
     {
       id: 'prod3', name: 'Citrus Soleil', category_id: 'cat3',
@@ -170,6 +180,10 @@ async function setup() {
       description: 'A vibrant explosion of Mediterranean citrus fruits. Fresh, energetic, and perfect for every day.',
       notes: { top: 'Lemon, Bergamot, Grapefruit', heart: 'Neroli, Jasmine', base: 'Cedar, Vetiver' },
       size: '100ml', gender: 'unisex', featured: false, rating: 4.4, reviews: 67,
+      variants: [
+        { size: '50ml', price: 1499, originalPrice: 1799, stock: 80, images: ['/images/perfume3.jpg'] },
+        { size: '100ml', price: 2499, originalPrice: 2999, stock: 100, images: ['/images/perfume3.jpg', '/images/perfume1.jpg', '/images/perfume6.jpg'] },
+      ],
     },
     {
       id: 'prod4', name: 'Midnight Amber', category_id: 'cat4',
@@ -179,6 +193,10 @@ async function setup() {
       description: 'The ultimate luxury experience. Warm amber, precious woods, and a whisper of vanilla create an unforgettable signature.',
       notes: { top: 'Aldehydes, Bergamot', heart: 'Amber, Patchouli, Rose', base: 'Vanilla, Benzoin, Musk' },
       size: '50ml', gender: 'unisex', featured: true, rating: 4.9, reviews: 45,
+      variants: [
+        { size: '50ml', price: 7999, originalPrice: 7999, stock: 25, images: ['/images/perfume4.jpg', '/images/perfume6.jpg', '/images/perfume1.jpg'] },
+        { size: '100ml', price: 12999, originalPrice: 14999, stock: 10, images: ['/images/perfume4.jpg', '/images/perfume1.jpg'] },
+      ],
     },
     {
       id: 'prod5', name: 'Aqua Marine', category_id: 'cat3',
@@ -188,6 +206,11 @@ async function setup() {
       description: 'Ocean-inspired freshness with aquatic notes and a clean, crisp finish. Pure freedom in a bottle.',
       notes: { top: 'Sea Salt, Ozonic', heart: 'Violet, Lotus', base: 'Driftwood, White Musk' },
       size: '100ml', gender: 'male', featured: false, rating: 4.3, reviews: 103,
+      variants: [
+        { size: '30ml', price: 999, originalPrice: 1299, stock: 50, images: ['/images/perfume5.jpg'] },
+        { size: '100ml', price: 1999, originalPrice: 2499, stock: 80, images: ['/images/perfume5.jpg', '/images/perfume3.jpg', '/images/perfume2.jpg'] },
+        { size: '200ml', price: 3499, originalPrice: 4299, stock: 20, images: ['/images/perfume5.jpg', '/images/perfume2.jpg'] },
+      ],
     },
     {
       id: 'prod6', name: 'Persian Bouquet', category_id: 'cat1',
@@ -197,16 +220,20 @@ async function setup() {
       description: 'Ancient Persian art distilled into fragrance. Oud, rose, and exotic spices weave a tapestry of legends.',
       notes: { top: 'Rose, Saffron', heart: 'Oud, Incense', base: 'Patchouli, Musk' },
       size: '75ml', gender: 'female', featured: true, rating: 4.7, reviews: 58,
+      variants: [
+        { size: '50ml', price: 3999, originalPrice: 4999, stock: 45, images: ['/images/perfume6.jpg'] },
+        { size: '75ml', price: 5499, originalPrice: 6999, stock: 35, images: ['/images/perfume6.jpg', '/images/perfume1.jpg', '/images/perfume4.jpg'] },
+      ],
     },
   ];
 
   for (const p of products) {
     await conn.query(
-      `INSERT INTO products (id, name, category_id, price, original_price, stock, image, images, description, notes, size, gender, featured, rating, reviews)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO products (id, name, category_id, price, original_price, stock, image, images, description, notes, size, gender, featured, rating, reviews, variants)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [p.id, p.name, p.category_id, p.price, p.original_price, p.stock, p.image,
        JSON.stringify(p.images), p.description, JSON.stringify(p.notes), p.size,
-       p.gender, p.featured ? 1 : 0, p.rating, p.reviews]
+       p.gender, p.featured ? 1 : 0, p.rating, p.reviews, JSON.stringify(p.variants || [])]
     );
   }
   console.log('✅ Products seeded (6)');

@@ -1,9 +1,10 @@
 'use client';
-// app/shop/[id]/page.js - Product Detail with Image Gallery (Mobile Responsive)
+// app/shop/[id]/page.js - Product Detail with Size Variants & Image Gallery
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/components/ToastProvider';
+import { secureFetch } from '@/lib/clientCrypto';
 
 const genderLabels = { male: '♂ For Him', female: '♀ For Her', unisex: '⚤ Unisex' };
 
@@ -17,17 +18,26 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(true);
   const [activeImg, setActiveImg] = useState(0);
+  const [selectedSize, setSelectedSize] = useState(null);
 
   // Touch/swipe for gallery
   const [touchStart, setTouchStart] = useState(null);
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/products/${id}`).then(r => r.json()),
-      fetch('/api/categories').then(r => r.json()),
-    ]).then(([prodData, catData]) => {
-      setProduct(prodData.product);
-      setCategories(catData.categories || []);
+      secureFetch(`/api/products/${id}`),
+      secureFetch('/api/categories'),
+    ]).then(([prodRes, catRes]) => {
+      const prod = prodRes.data.product;
+      setProduct(prod);
+      setCategories(catRes.data.categories || []);
+      // Auto-select matching variant or first variant
+      if (prod?.variants?.length > 0) {
+        const match = prod.variants.find(v => v.size === prod.size);
+        setSelectedSize(match ? match.size : prod.variants[0].size);
+      } else {
+        setSelectedSize(prod?.size || null);
+      }
       setLoading(false);
     });
   }, [id]);
@@ -49,20 +59,37 @@ export default function ProductDetailPage() {
     </div>
   );
 
+  // Get active variant data
+  const activeVariant = product.variants?.find(v => v.size === selectedSize);
+  const currentPrice = activeVariant ? activeVariant.price : product.price;
+  const currentOriginalPrice = activeVariant ? (activeVariant.originalPrice || activeVariant.price) : product.originalPrice;
+  const currentStock = activeVariant ? activeVariant.stock : product.stock;
+  const currentImages = activeVariant?.images?.length > 0 ? activeVariant.images : (product.images?.length > 0 ? product.images : (product.image ? [product.image] : []));
+
   const cat = categories.find(c => c.id === product.category);
-  const discount = product.originalPrice > product.price
-    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+  const discount = currentOriginalPrice > currentPrice
+    ? Math.round(((currentOriginalPrice - currentPrice) / currentOriginalPrice) * 100)
     : 0;
 
-  // Build gallery
-  const gallery = (product.images && product.images.length > 0)
-    ? product.images
-    : (product.image ? [product.image] : []);
+  const gallery = currentImages;
 
   const handleAddToCart = () => {
-    addToCart(product, quantity);
-    toast(`${product.name} added to cart! 🛍️`);
+    // Pass the full product with variant info
+    const cartProduct = {
+      ...product,
+      price: currentPrice,
+      stock: currentStock,
+      image: currentImages[0] || product.image,
+    };
+    addToCart(cartProduct, quantity, selectedSize);
+    toast(`${product.name} (${selectedSize}) added to cart! 🛍️`);
     document.dispatchEvent(new CustomEvent('openCart'));
+  };
+
+  const handleSizeChange = (size) => {
+    setSelectedSize(size);
+    setActiveImg(0);
+    setQuantity(1);
   };
 
   const handleTouchStart = (e) => setTouchStart(e.touches[0].clientX);
@@ -75,6 +102,8 @@ export default function ProductDetailPage() {
     }
     setTouchStart(null);
   };
+
+  const hasVariants = product.variants && product.variants.length > 1;
 
   return (
     <div style={{ paddingTop: '80px', paddingBottom: '80px', minHeight: '100vh', background: 'var(--dark)' }}>
@@ -231,18 +260,86 @@ export default function ProductDetailPage() {
               <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{product.rating} ({product.reviews} reviews)</span>
             </div>
 
+            {/* ===== SIZE SELECTOR ===== */}
+            {hasVariants && (
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontSize: '12px', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: '12px', fontWeight: 600 }}>
+                  📦 Select Size
+                </div>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  {product.variants.map(v => {
+                    const isActive = selectedSize === v.size;
+                    const isOutOfStock = v.stock <= 0;
+                    const vDiscount = v.originalPrice > v.price
+                      ? Math.round(((v.originalPrice - v.price) / v.originalPrice) * 100)
+                      : 0;
+                    return (
+                      <button
+                        key={v.size}
+                        onClick={() => !isOutOfStock && handleSizeChange(v.size)}
+                        disabled={isOutOfStock}
+                        style={{
+                          padding: '12px 20px',
+                          borderRadius: '14px',
+                          border: isActive
+                            ? '2px solid var(--gold)'
+                            : '2px solid var(--border)',
+                          background: isActive
+                            ? 'rgba(201,169,110,0.12)'
+                            : 'var(--surface)',
+                          color: isOutOfStock ? 'var(--text-dim)' : 'var(--text)',
+                          cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                          opacity: isOutOfStock ? 0.5 : 1,
+                          transition: 'all 0.2s',
+                          textAlign: 'center',
+                          minWidth: '100px',
+                          position: 'relative',
+                        }}
+                      >
+                        <div style={{ fontSize: '16px', fontWeight: 700, marginBottom: '4px' }}>
+                          {v.size}
+                        </div>
+                        <div style={{ fontSize: '13px', color: isActive ? 'var(--gold)' : 'var(--text-muted)', fontWeight: 600 }}>
+                          Rs. {v.price.toLocaleString()}
+                        </div>
+                        {vDiscount > 0 && (
+                          <div style={{ fontSize: '10px', color: '#E53935', fontWeight: 700, marginTop: '2px' }}>
+                            -{vDiscount}% OFF
+                          </div>
+                        )}
+                        {isOutOfStock && (
+                          <div style={{ fontSize: '10px', color: 'var(--error)', fontWeight: 600, marginTop: '2px' }}>
+                            Out of Stock
+                          </div>
+                        )}
+                        {isActive && (
+                          <div style={{
+                            position: 'absolute', top: '-6px', right: '-6px',
+                            width: '20px', height: '20px', borderRadius: '50%',
+                            background: 'var(--gold)', color: '#000',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '11px', fontWeight: 700,
+                          }}>✓</div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Price */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
               <span style={{ fontFamily: 'Cormorant Garamond,serif', fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 700, color: 'var(--gold)' }}>
-                Rs. {product.price.toLocaleString()}
+                Rs. {currentPrice.toLocaleString()}
               </span>
               {discount > 0 && (
                 <div>
                   <div style={{ color: 'var(--text-dim)', textDecoration: 'line-through', fontSize: '1rem' }}>
-                    Rs. {product.originalPrice.toLocaleString()}
+                    Rs. {currentOriginalPrice.toLocaleString()}
                   </div>
                   <div style={{ fontSize: '12px', background: 'rgba(229,57,53,0.15)', color: '#E53935', padding: '2px 8px', borderRadius: '100px', fontWeight: 700 }}>
-                    You save Rs. {(product.originalPrice - product.price).toLocaleString()}
+                    You save Rs. {(currentOriginalPrice - currentPrice).toLocaleString()}
                   </div>
                 </div>
               )}
@@ -277,29 +374,30 @@ export default function ProductDetailPage() {
             {/* Size & Stock */}
             <div style={{ display: 'flex', gap: '12px', marginBottom: '28px', fontSize: '13px', flexWrap: 'wrap' }}>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px', padding: '10px 16px' }}>
-                📦 Size: {product.size}
+                📦 Size: <strong>{selectedSize || product.size}</strong>
+                {hasVariants && <span style={{ color: 'var(--text-dim)', fontSize: '11px' }}> · {product.variants.length} sizes available</span>}
               </div>
               <div style={{
-                background: product.stock > 0 ? 'rgba(76,175,80,0.1)' : 'rgba(229,57,53,0.1)',
-                border: `1px solid ${product.stock > 0 ? 'rgba(76,175,80,0.3)' : 'rgba(229,57,53,0.3)'}`,
+                background: currentStock > 0 ? 'rgba(76,175,80,0.1)' : 'rgba(229,57,53,0.1)',
+                border: `1px solid ${currentStock > 0 ? 'rgba(76,175,80,0.3)' : 'rgba(229,57,53,0.3)'}`,
                 borderRadius: '8px',
                 padding: '10px 16px',
-                color: product.stock > 0 ? 'var(--success)' : 'var(--error)',
+                color: currentStock > 0 ? 'var(--success)' : 'var(--error)',
               }}>
-                {product.stock > 0 ? `✅ ${product.stock} in stock` : '❌ Out of stock'}
+                {currentStock > 0 ? `✅ ${currentStock} in stock` : '❌ Out of stock'}
               </div>
             </div>
 
             {/* Quantity + Cart */}
-            {product.stock > 0 && (
+            {currentStock > 0 && (
               <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '12px', padding: '8px 16px' }}>
                   <button className="qty-btn" onClick={() => setQuantity(q => Math.max(1, q - 1))} style={{ width: '32px', height: '32px' }}>−</button>
                   <span style={{ fontSize: '18px', fontWeight: 700, minWidth: '32px', textAlign: 'center' }}>{quantity}</span>
-                  <button className="qty-btn" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} style={{ width: '32px', height: '32px' }}>+</button>
+                  <button className="qty-btn" onClick={() => setQuantity(q => Math.min(currentStock, q + 1))} style={{ width: '32px', height: '32px' }}>+</button>
                 </div>
                 <button className="btn btn-primary btn-lg" style={{ flex: 1, minWidth: '200px' }} onClick={handleAddToCart}>
-                  🛍️ Add to Cart — Rs. {(product.price * quantity).toLocaleString()}
+                  🛍️ Add to Cart — Rs. {(currentPrice * quantity).toLocaleString()}
                 </button>
               </div>
             )}

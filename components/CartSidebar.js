@@ -43,18 +43,32 @@ export default function CartSidebar() {
             </div>
           ) : (
             cart.map(item => (
-              <div key={item.productId} className="cart-item">
-                <div className="cart-item-img">🧴</div>
+              <div key={item.cartKey} className="cart-item">
+                <div className="cart-item-img">
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} style={{width:'100%',height:'100%',objectFit:'cover',borderRadius:'8px'}} onError={e => { e.target.style.display='none'; }} />
+                  ) : '🧴'}
+                </div>
                 <div className="cart-item-info">
                   <div className="cart-item-name">{item.name}</div>
-                  <div className="cart-item-price">Rs. {item.price.toLocaleString()}</div>
+                  <div style={{display:'flex',gap:'8px',alignItems:'center',marginTop:'2px',marginBottom:'4px'}}>
+                    <div className="cart-item-price">Rs. {item.price.toLocaleString()}</div>
+                    {item.size && item.size !== 'default' && (
+                      <span style={{
+                        fontSize:'10px',padding:'2px 8px',borderRadius:'100px',
+                        background:'rgba(201,169,110,0.15)',color:'var(--gold)',fontWeight:600,
+                      }}>
+                        {item.size}
+                      </span>
+                    )}
+                  </div>
                   <div className="qty-control">
-                    <button className="qty-btn" onClick={() => updateQuantity(item.productId, item.quantity - 1)}>−</button>
+                    <button className="qty-btn" onClick={() => updateQuantity(item.cartKey, item.quantity - 1)}>−</button>
                     <span className="qty-num">{item.quantity}</span>
-                    <button className="qty-btn" onClick={() => updateQuantity(item.productId, item.quantity + 1)}>+</button>
+                    <button className="qty-btn" onClick={() => updateQuantity(item.cartKey, item.quantity + 1)}>+</button>
                     <button
                       style={{marginLeft:'auto',color:'var(--error)',background:'none',border:'none',cursor:'pointer',fontSize:'12px'}}
-                      onClick={() => removeFromCart(item.productId)}
+                      onClick={() => removeFromCart(item.cartKey)}
                     >
                       Remove
                     </button>

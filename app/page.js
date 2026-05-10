@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import ProductCard from '@/components/ProductCard';
 import ImageSlider from '@/components/ImageSlider';
+import { secureFetch } from '@/lib/clientCrypto';
 
 export default function HomePage() {
   const [featured, setFeatured] = useState([]);
@@ -12,13 +13,13 @@ export default function HomePage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/products?featured=true').then(r => r.json()),
-      fetch('/api/products').then(r => r.json()),
-      fetch('/api/categories').then(r => r.json()),
-    ]).then(([featData, allData, catData]) => {
-      setFeatured(featData.products || []);
-      setAllProducts(allData.products || []);
-      setCategories(catData.categories || []);
+      secureFetch('/api/products?featured=true'),
+      secureFetch('/api/products'),
+      secureFetch('/api/categories'),
+    ]).then(([featRes, allRes, catRes]) => {
+      setFeatured(featRes.data.products || []);
+      setAllProducts(allRes.data.products || []);
+      setCategories(catRes.data.categories || []);
     });
   }, []);
 

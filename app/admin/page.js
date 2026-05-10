@@ -1,15 +1,15 @@
 'use client';
 // app/admin/page.js - Admin Dashboard
 import { useState, useEffect } from 'react';
+import { secureFetch } from '@/lib/clientCrypto';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then(r => r.json())
-      .then(d => { setStats(d); setLoading(false); });
+    secureFetch('/api/admin/stats')
+      .then(res => { setStats(res.data); setLoading(false); });
   }, []);
 
   if (loading) return (

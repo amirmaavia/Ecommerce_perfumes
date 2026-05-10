@@ -2,14 +2,18 @@
 // app/admin/products/page.js
 import { useState, useEffect, useRef } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { secureFetch } from '@/lib/clientCrypto';
 
 const EMPTY_FORM = {
   name: '', category: '', price: '', originalPrice: '',
   stock: '', description: '', size: '100ml',
   featured: false, image: '',
   images: [''],
-  notes: { top: '', heart: '', base: '' }
+  notes: { top: '', heart: '', base: '' },
+  variants: [],
 };
+
+const EMPTY_VARIANT = { size: '100ml', price: '', originalPrice: '', stock: '', images: [''] };
 
 export default function AdminProducts() {
   const toast = useToast();
@@ -29,11 +33,11 @@ export default function AdminProducts() {
 
   async function loadData() {
     const [prodRes, catRes] = await Promise.all([
-      fetch('/api/products').then(r => r.json()),
-      fetch('/api/categories').then(r => r.json()),
+      secureFetch('/api/products'),
+      secureFetch('/api/categories'),
     ]);
-    setProducts(prodRes.products || []);
-    setCategories(catRes.categories || []);
+    setProducts(prodRes.data.products || []);
+    setCategories(catRes.data.categories || []);
   }
 
   function openAdd() {
@@ -50,7 +54,10 @@ export default function AdminProducts() {
       description: p.description, size: p.size, featured: p.featured,
       image: p.image || '',
       images: p.images && p.images.length > 0 ? [...p.images] : [p.image || ''],
-      notes: p.notes || { top: '', heart: '', base: '' }
+      notes: p.notes || { top: '', heart: '', base: '' },
+      variants: p.variants && p.variants.length > 0
+        ? p.variants.map(v => ({ ...v, images: v.images && v.images.length > 0 ? [...v.images] : [''] }))
+        : [],
     });
     setShowModal(true);
   }
@@ -95,19 +102,43 @@ export default function AdminProducts() {
     setLoading(true);
     try {
       const cleanImages = form.images.filter(img => img.trim() !== '');
+      // Clean variant images too
+      const cleanVariants = form.variants.map(v => ({
+        ...v,
+        price: parseFloat(v.price) || 0,
+        originalPrice: parseFloat(v.originalPrice) || parseFloat(v.price) || 0,
+        stock: parseInt(v.stock) || 0,
+        images: (v.images || []).filter(img => img.trim() !== ''),
+      }));
+      // Auto-sync main product with first variant if variants exist
+      let mainPrice = form.price;
+      let mainOrigPrice = form.originalPrice;
+      let mainStock = form.stock;
+      let mainSize = form.size;
+      if (cleanVariants.length > 0) {
+        const first = cleanVariants[0];
+        mainPrice = first.price;
+        mainOrigPrice = first.originalPrice;
+        mainStock = first.stock;
+        mainSize = first.size;
+      }
       const payload = {
         ...form,
+        price: mainPrice,
+        originalPrice: mainOrigPrice,
+        stock: mainStock,
+        size: mainSize,
         image: cleanImages[0] || '/images/perfume1.jpg',
         images: cleanImages.length > 0 ? cleanImages : ['/images/perfume1.jpg'],
+        variants: cleanVariants,
       };
       const url = editProduct ? `/api/products/${editProduct.id}` : '/api/products';
       const method = editProduct ? 'PUT' : 'POST';
-      const res = await fetch(url, {
+      const { ok, data } = await secureFetch(url, {
         method, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) { toast(data.error, 'error'); }
+      if (!ok) { toast(data.error, 'error'); }
       else {
         toast(editProduct ? 'Product updated!' : 'Product added!');
         setShowModal(false);
@@ -120,14 +151,13 @@ export default function AdminProducts() {
   async function handleDelete(id) {
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
+      const { ok, data } = await secureFetch(`/api/products/${id}`, { method: 'DELETE' });
+      if (ok) {
         toast('Product deleted successfully 🗑️');
         setDeletingId(null);
         loadData();
       } else {
-        toast(data.error || `Delete failed (${res.status})`, 'error');
+        toast(data.error || 'Delete failed', 'error');
       }
     } catch (err) {
       toast('Network error — could not delete', 'error');
@@ -191,8 +221,13 @@ export default function AdminProducts() {
                       <span style={{ fontSize: '20px', display: p.image ? 'none' : 'block' }}>🧴</span>
                     </div>
                     <div>
-                      <div style={{ fontWeight: 500, fontSize: '13px' }}>{p.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{p.size}</div>
+                <div style={{ fontWeight: 500, fontSize: '13px' }}>{p.name}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {p.variants && p.variants.length > 1
+                          ? p.variants.map(v => v.size).join(' · ')
+                          : p.size
+                        }
+                      </div>
                       {p.images && p.images.length > 1 && (
                         <div style={{ fontSize: '10px', color: 'var(--gold)', marginTop: '2px' }}>
                           📷 {p.images.length} photos
@@ -293,13 +328,13 @@ export default function AdminProducts() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Size</label>
+                  <label className="form-label">Default Size</label>
                   <select value={form.size} onChange={e => setForm({ ...form, size: e.target.value })}>
                     {['30ml', '50ml', '75ml', '100ml', '150ml', '200ml'].map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Price (Rs.) *</label>
+                  <label className="form-label">Default Price (Rs.) *</label>
                   <input type="number" placeholder="4999" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} required />
                 </div>
                 <div className="form-group">
@@ -307,13 +342,147 @@ export default function AdminProducts() {
                   <input type="number" placeholder="6499" value={form.originalPrice} onChange={e => setForm({ ...form, originalPrice: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Stock *</label>
+                  <label className="form-label">Default Stock *</label>
                   <input type="number" placeholder="50" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} required />
                 </div>
                 <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '28px' }}>
                   <input type="checkbox" id="prod-featured" checked={form.featured} onChange={e => setForm({ ...form, featured: e.target.checked })} style={{ width: 'auto' }} />
                   <label htmlFor="prod-featured" style={{ fontSize: '14px', color: 'var(--text)', textTransform: 'none', letterSpacing: 'normal' }}>Featured Product</label>
                 </div>
+              </div>
+
+              {/* ===== SIZE VARIANTS SECTION ===== */}
+              <div style={{
+                background: 'var(--dark3)', border: '1px solid var(--border)',
+                borderRadius: '14px', padding: '18px', marginBottom: '20px', marginTop: '10px',
+              }}>
+                <div style={{
+                  fontSize: '12px', fontWeight: 700, letterSpacing: '1px',
+                  color: 'var(--gold)', textTransform: 'uppercase', marginBottom: '14px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <span>📦 Size Variants <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-dim)', textTransform: 'none', letterSpacing: 0 }}>— Different price/stock/images per size</span></span>
+                  <button
+                    type="button"
+                    onClick={() => setForm(prev => ({ ...prev, variants: [...prev.variants, { ...EMPTY_VARIANT }] }))}
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: '12px', color: 'var(--gold)', padding: '4px 12px' }}
+                  >+ Add Size</button>
+                </div>
+
+                {form.variants.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-dim)', fontSize: '13px' }}>
+                    No variants — product uses default price/stock above.<br />
+                    <button
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, variants: [{ size: form.size || '100ml', price: form.price || '', originalPrice: form.originalPrice || '', stock: form.stock || '', images: [''] }] }))}
+                      style={{ marginTop: '10px', fontSize: '12px', color: 'var(--gold)', background: 'none', border: '1px dashed var(--gold)', borderRadius: '8px', padding: '6px 14px', cursor: 'pointer' }}
+                    >+ Create First Variant from Defaults</button>
+                  </div>
+                ) : (
+                  form.variants.map((v, vi) => (
+                    <div key={vi} style={{
+                      background: 'var(--dark2)', border: '1px solid var(--border-light)', borderRadius: '12px',
+                      padding: '16px', marginBottom: '12px',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--gold)' }}>Variant #{vi + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, variants: prev.variants.filter((_, i) => i !== vi) }))}
+                          style={{ fontSize: '11px', color: '#E53935', background: 'none', border: '1px solid rgba(229,57,53,0.3)', borderRadius: '6px', padding: '3px 8px', cursor: 'pointer' }}
+                        >✕ Remove</button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '10px' }}>Size</label>
+                          <select
+                            value={v.size}
+                            onChange={e => {
+                              const newVars = [...form.variants];
+                              newVars[vi] = { ...newVars[vi], size: e.target.value };
+                              setForm(prev => ({ ...prev, variants: newVars }));
+                            }}
+                            style={{ fontSize: '12px', padding: '8px' }}
+                          >
+                            {['30ml','50ml','75ml','100ml','150ml','200ml'].map(s => <option key={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '10px' }}>Price (Rs.)</label>
+                          <input
+                            type="number" placeholder="4999" style={{ fontSize: '12px', padding: '8px' }}
+                            value={v.price}
+                            onChange={e => {
+                              const newVars = [...form.variants];
+                              newVars[vi] = { ...newVars[vi], price: e.target.value };
+                              setForm(prev => ({ ...prev, variants: newVars }));
+                            }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '10px' }}>Original Price</label>
+                          <input
+                            type="number" placeholder="6499" style={{ fontSize: '12px', padding: '8px' }}
+                            value={v.originalPrice}
+                            onChange={e => {
+                              const newVars = [...form.variants];
+                              newVars[vi] = { ...newVars[vi], originalPrice: e.target.value };
+                              setForm(prev => ({ ...prev, variants: newVars }));
+                            }}
+                          />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: '10px' }}>Stock</label>
+                          <input
+                            type="number" placeholder="50" style={{ fontSize: '12px', padding: '8px' }}
+                            value={v.stock}
+                            onChange={e => {
+                              const newVars = [...form.variants];
+                              newVars[vi] = { ...newVars[vi], stock: e.target.value };
+                              setForm(prev => ({ ...prev, variants: newVars }));
+                            }}
+                          />
+                        </div>
+                      </div>
+                      {/* Variant images */}
+                      <div style={{ marginTop: '8px' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-dim)', marginBottom: '6px', fontWeight: 600 }}>📷 Variant Images</div>
+                        {(v.images || ['']).map((img, imgIdx) => (
+                          <div key={imgIdx} style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '6px' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '6px', overflow: 'hidden', background: 'var(--dark3)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {img ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontSize: '14px', opacity: 0.3 }}>🖼️</span>}
+                            </div>
+                            <input
+                              placeholder={`Image ${imgIdx + 1} URL`}
+                              value={img}
+                              onChange={e => {
+                                const newVars = [...form.variants];
+                                const newImgs = [...(newVars[vi].images || [''])];
+                                newImgs[imgIdx] = e.target.value;
+                                newVars[vi] = { ...newVars[vi], images: newImgs };
+                                setForm(prev => ({ ...prev, variants: newVars }));
+                              }}
+                              style={{ flex: 1, fontSize: '11px', padding: '6px 8px' }}
+                            />
+                            {(v.images || []).length > 1 && (
+                              <button type="button" onClick={() => {
+                                const newVars = [...form.variants];
+                                newVars[vi] = { ...newVars[vi], images: newVars[vi].images.filter((_, i) => i !== imgIdx) };
+                                setForm(prev => ({ ...prev, variants: newVars }));
+                              }} style={{ width: '24px', height: '24px', borderRadius: '4px', border: '1px solid rgba(229,57,53,0.3)', background: 'rgba(229,57,53,0.08)', color: '#E53935', cursor: 'pointer', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                            )}
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => {
+                          const newVars = [...form.variants];
+                          newVars[vi] = { ...newVars[vi], images: [...(newVars[vi].images || ['']), ''] };
+                          setForm(prev => ({ ...prev, variants: newVars }));
+                        }} style={{ fontSize: '11px', color: 'var(--text-muted)', background: 'none', border: '1px dashed var(--border)', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer', marginTop: '2px' }}>+ Add Image</button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
 
               {/* Description */}

@@ -2,6 +2,7 @@
 // app/admin/discounts/page.js
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { secureFetch } from '@/lib/clientCrypto';
 
 const EMPTY_FORM = { code: '', type: 'percentage', value: '', minOrder: '', maxUses: '', active: true };
 
@@ -14,23 +15,21 @@ export default function AdminDiscounts() {
   useEffect(() => { loadDiscounts(); }, []);
 
   async function loadDiscounts() {
-    const res = await fetch('/api/discounts');
-    if (res.ok) {
-      const d = await res.json();
-      setDiscounts(d.discounts || []);
+    const { ok, data } = await secureFetch('/api/discounts');
+    if (ok) {
+      setDiscounts(data.discounts || []);
     }
   }
 
   async function handleAdd(e) {
     e.preventDefault();
     setLoading(true);
-    const res = await fetch('/api/discounts', {
+    const { ok, data } = await secureFetch('/api/discounts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
-    const data = await res.json();
-    if (res.ok) {
+    if (ok) {
       toast(`Discount "${data.discount.code}" created!`);
       setForm(EMPTY_FORM);
       loadDiscounts();

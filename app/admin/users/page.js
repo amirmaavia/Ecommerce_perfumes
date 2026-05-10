@@ -2,6 +2,7 @@
 // app/admin/users/page.js - Admin Customer Management
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { secureFetch } from '@/lib/clientCrypto';
 
 export default function AdminUsers() {
   const toast = useToast();
@@ -12,10 +13,9 @@ export default function AdminUsers() {
   useEffect(() => { loadUsers(); }, []);
 
   async function loadUsers() {
-    const res = await fetch('/api/admin/users');
-    if (res.ok) {
-      const d = await res.json();
-      setUsers(d.users || []);
+    const { ok, data } = await secureFetch('/api/admin/users');
+    if (ok) {
+      setUsers(data.users || []);
     }
     setLoading(false);
   }
@@ -23,13 +23,12 @@ export default function AdminUsers() {
   async function handleRoleToggle(user) {
     const newRole = user.role === 'admin' ? 'user' : 'admin';
     if (!confirm(`Change ${user.name}'s role to "${newRole}"?`)) return;
-    const res = await fetch('/api/admin/users', {
+    const { ok, data } = await secureFetch('/api/admin/users', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: user.id, role: newRole }),
     });
-    const data = await res.json();
-    if (res.ok) {
+    if (ok) {
       toast(`${user.name}'s role updated to ${newRole}`);
       loadUsers();
     } else {
@@ -39,13 +38,12 @@ export default function AdminUsers() {
 
   async function handleDelete(user) {
     if (!confirm(`Delete customer "${user.name}"? This cannot be undone.`)) return;
-    const res = await fetch('/api/admin/users', {
+    const { ok, data } = await secureFetch('/api/admin/users', {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: user.id }),
     });
-    const data = await res.json();
-    if (res.ok) {
+    if (ok) {
       toast(`${user.name} deleted`);
       loadUsers();
     } else {

@@ -1,6 +1,7 @@
 'use client';
-// context/AuthContext.js
+// context/AuthContext.js - Auth context with encrypted API communication
 import { createContext, useContext, useState, useEffect } from 'react';
+import { secureFetch } from '@/lib/clientCrypto';
 
 const AuthContext = createContext(null);
 
@@ -14,9 +15,8 @@ export function AuthProvider({ children }) {
 
   async function fetchMe() {
     try {
-      const res = await fetch('/api/auth/me');
-      if (res.ok) {
-        const data = await res.json();
+      const { ok, data } = await secureFetch('/api/auth/me');
+      if (ok && data.user) {
         setUser(data.user);
       }
     } catch {}
@@ -24,31 +24,29 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
-    const res = await fetch('/api/auth/login', {
+    const { ok, data } = await secureFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    if (!ok) throw new Error(data.error);
     setUser(data.user);
     return data.user;
   }
 
   async function register(name, email, password) {
-    const res = await fetch('/api/auth/register', {
+    const { ok, data } = await secureFetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
+    if (!ok) throw new Error(data.error);
     setUser(data.user);
     return data.user;
   }
 
   async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    await secureFetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
   }
 

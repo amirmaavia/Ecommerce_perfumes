@@ -2,6 +2,7 @@
 // app/admin/orders/page.js
 import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ToastProvider';
+import { secureFetch } from '@/lib/clientCrypto';
 
 const STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 
@@ -15,19 +16,18 @@ export default function AdminOrders() {
   useEffect(() => { loadOrders(); }, []);
 
   async function loadOrders() {
-    const res = await fetch('/api/orders');
-    const d = await res.json();
-    setOrders((d.orders || []).reverse());
+    const { data } = await secureFetch('/api/orders');
+    setOrders((data.orders || []).reverse());
     setLoading(false);
   }
 
   async function updateStatus(id, status) {
-    const res = await fetch(`/api/orders/${id}`, {
+    const { ok } = await secureFetch(`/api/orders/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
-    if (res.ok) { toast(`Order status updated to "${status}"`); loadOrders(); }
+    if (ok) { toast(`Order status updated to "${status}"`); loadOrders(); }
     else toast('Failed to update', 'error');
   }
 

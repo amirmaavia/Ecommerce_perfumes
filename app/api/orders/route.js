@@ -1,36 +1,41 @@
 // app/api/orders/route.js
 import { NextResponse } from 'next/server';
 import { getOrders, getOrdersByUser, getProductById, reduceStock, getDiscountByCode, incrementDiscountUsage, createOrder, getUserById, updateUser } from '@/lib/db';
-import { verifyApiToken } from '@/lib/auth';
+import { requireAuth, signToken, COOKIE_NAME_EXPORT } from '@/lib/auth';
+import { encryptResponse, decryptRequest } from '@/lib/crypto';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET(request) {
-  const user = verifyApiToken(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Require valid JWT token
+  const auth = requireAuth(request);
+  if (auth.response) return auth.response;
 
   try {
-    if (user.role === 'admin') {
-      return NextResponse.json({ orders: await getOrders() });
+    if (auth.user.role === 'admin') {
+      return NextResponse.json(encryptResponse({ orders: await getOrders() }));
     }
-    return NextResponse.json({ orders: await getOrdersByUser(user.id) });
+    return NextResponse.json(encryptResponse({ orders: await getOrdersByUser(auth.user.id) }));
   } catch (error) {
     console.error('Orders GET error:', error);
-    return NextResponse.json({ orders: [], error: 'Failed to fetch orders' }, { status: 500 });
+    return NextResponse.json(encryptResponse({ orders: [], error: 'Failed to fetch orders' }), { status: 500 });
   }
 }
 
 export async function POST(request) {
-  const user = verifyApiToken(request);
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // Require valid JWT token
+  const auth = requireAuth(request);
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   try {
-    const { items, shippingAddress, discountCode, paymentMethod } = await request.json();
+    const rawBody = await request.json();
+    const { items, shippingAddress, discountCode, paymentMethod } = decryptRequest(rawBody);
 
     if (!items || items.length === 0) {
-      return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
+      return NextResponse.json(encryptResponse({ error: 'Cart is empty' }), { status: 400 });
     }
     if (!shippingAddress) {
-      return NextResponse.json({ error: 'Shipping address is required' }, { status: 400 });
+      return NextResponse.json(encryptResponse({ error: 'Shipping address is required' }), { status: 400 });
     }
 
     let subtotal = 0;
@@ -40,12 +45,12 @@ export async function POST(request) {
     for (const item of items) {
       const product = await getProductById(item.productId);
       if (!product) {
-        return NextResponse.json({ error: `Product not found: ${item.productId}` }, { status: 400 });
+        return NextResponse.json(encryptResponse({ error: `Product not found: ${item.productId}` }), { status: 400 });
       }
       if (product.stock < item.quantity) {
-        return NextResponse.json({
+        return NextResponse.json(encryptResponse({
           error: `Insufficient stock for ${product.name}. Available: ${product.stock}`
-        }, { status: 400 });
+        }), { status: 400 });
       }
       subtotal += product.price * item.quantity;
       orderItems.push({
@@ -113,9 +118,28 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ order: newOrder }, { status: 201 });
+    // Refresh JWT token on checkout with updated user details (new address, etc.)
+    const updatedFullUser = await getUserById(user.id);
+    const refreshedToken = signToken({
+      id: updatedFullUser.id,
+      email: updatedFullUser.email,
+      name: updatedFullUser.name,
+      role: updatedFullUser.role,
+      addresses: updatedFullUser.addresses || [],
+    });
+
+    const response = NextResponse.json(encryptResponse({ order: newOrder }), { status: 201 });
+    // Update the JWT cookie with latest user details after checkout
+    response.cookies.set(COOKIE_NAME_EXPORT, refreshedToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
+    });
+    return response;
   } catch (error) {
     console.error('Order error:', error);
-    return NextResponse.json({ error: 'Failed to create order' }, { status: 500 });
+    return NextResponse.json(encryptResponse({ error: 'Failed to create order' }), { status: 500 });
   }
 }
