@@ -232,8 +232,8 @@ async function setup() {
       `INSERT INTO products (id, name, category_id, price, original_price, stock, image, images, description, notes, size, gender, featured, rating, reviews, variants)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [p.id, p.name, p.category_id, p.price, p.original_price, p.stock, p.image,
-       JSON.stringify(p.images), p.description, JSON.stringify(p.notes), p.size,
-       p.gender, p.featured ? 1 : 0, p.rating, p.reviews, JSON.stringify(p.variants || [])]
+      JSON.stringify(p.images), p.description, JSON.stringify(p.notes), p.size,
+      p.gender, p.featured ? 1 : 0, p.rating, p.reviews, JSON.stringify(p.variants || [])]
     );
   }
   console.log('✅ Products seeded (6)');
